@@ -1,0 +1,15 @@
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\bin\Debug\net10.0\Client.exe
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\bin\Debug\net10.0\Client.deps.json
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\bin\Debug\net10.0\Client.runtimeconfig.json
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\bin\Debug\net10.0\Client.dll
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\bin\Debug\net10.0\Client.pdb
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\obj\Debug\net10.0\Client.GeneratedMSBuildEditorConfig.editorconfig
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\obj\Debug\net10.0\Client.AssemblyInfoInputs.cache
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\obj\Debug\net10.0\Client.AssemblyInfo.cs
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\obj\Debug\net10.0\Client.csproj.CoreCompileInputs.cache
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\obj\Debug\net10.0\Client.sourcelink.json
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\obj\Debug\net10.0\Client.dll
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\obj\Debug\net10.0\refint\Client.dll
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\obj\Debug\net10.0\Client.pdb
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\obj\Debug\net10.0\Client.genruntimeconfig.cache
+D:\LTMang\Python\Nhom11_LapTrinhMang\CSharp\Client\obj\Debug\net10.0\ref\Client.dll
