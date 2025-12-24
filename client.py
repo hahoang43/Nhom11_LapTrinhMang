@@ -1,105 +1,120 @@
-import socket
+import json
 import threading
+from typing import Callable, Optional
+
+import websocket  # Yêu cầu thư viện websocket-client
+
 
 class GameClient:
-    def __init__(self, host='127.0.0.1', port=1234, on_message_received=None):
-        """
-        :param host: Địa chỉ IP của Server (mặc định localhost)
-        :param port: Cổng kết nối (phải trùng Server)
-        :param on_message_received: Một hàm (callback) từ bên UI. 
-               Khi nhận được tin nhắn từ Server, class này sẽ gọi hàm đó để UI cập nhật.
-        """
+    """
+    Client WebSocket để kết nối tới server (server_ws.py).
+    Giao diện (Tkinter hoặc web) có thể truyền callback để nhận dữ liệu.
+    """
+
+    def __init__(self, host: str = "127.0.0.1", port: int = 8765, on_message_received: Optional[Callable] = None):
         self.host = host
         self.port = port
-        self.socket = None
+        self.ws_app: Optional[websocket.WebSocketApp] = None
+        self.listen_thread: Optional[threading.Thread] = None
         self.is_connected = False
-        self.on_message_received = on_message_received 
+        self.connected_event = threading.Event()
+        self.on_message_received = on_message_received
 
-    def connect_to_server(self):
-        """Hàm kết nối đến Server và bắt đầu luồng lắng nghe"""
-        try:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect((self.host, self.port))
-            self.is_connected = True
-            print(">>> Đã kết nối thành công đến Server!")
+    # ------------------------------------------------------------------ #
+    # Kết nối / Ngắt kết nối
+    # ------------------------------------------------------------------ #
+    def connect_to_server(self) -> bool:
+        """Kết nối tới server WebSocket và khởi động luồng lắng nghe."""
+        url = f"ws://{self.host}:{self.port}"
+        self.connected_event.clear()
 
-            # Bắt đầu một luồng (Thread) riêng để lắng nghe tin nhắn
-            # Nếu không có luồng này, giao diện sẽ bị đơ khi đợi tin nhắn
-            receive_thread = threading.Thread(target=self.receive_messages)
-            receive_thread.daemon = True # Tự tắt khi chương trình chính tắt
-            receive_thread.start()
-            
-            return True
-        except Exception as e:
-            print(f"Không thể kết nối Server: {e}")
+        self.ws_app = websocket.WebSocketApp(
+            url,
+            on_open=self._on_open,
+            on_message=self._on_message,
+            on_error=self._on_error,
+            on_close=self._on_close,
+        )
+
+        self.listen_thread = threading.Thread(target=self.ws_app.run_forever, daemon=True)
+        self.listen_thread.start()
+
+        # Đợi tối đa 3 giây xem có mở kết nối thành công không
+        connected = self.connected_event.wait(timeout=3)
+        if not connected:
+            print("Không thể kết nối server WebSocket.")
             return False
 
-    def receive_messages(self):
-        """Vòng lặp vô tận để nghe Server nói gì"""
-        while self.is_connected:
-            try:
-                # Đọc dữ liệu từ Server
-                message = self.socket.recv(1024).decode('utf-8').strip()
-                
-                if not message:
-                    print("Mất kết nối với Server.")
-                    self.is_connected = False
-                    break
-                
-                print(f"[SERVER]: {message}") # Log để debug
-                
-                # Nếu bên UI có đăng ký hàm xử lý, thì gọi hàm đó và truyền tin nhắn sang
-                if self.on_message_received:
-                    self.on_message_received(message)
-                    
-            except Exception as e:
-                print(f"Lỗi khi nhận dữ liệu: {e}")
-                self.is_connected = False
-                break
-
-    def send_move(self, move_type):
-        """
-        Gửi nước đi lên Server.
-        move_type: 'ROCK', 'PAPER', hoặc 'SCISSORS'
-        """
-        if self.is_connected:
-            protocol_msg = f"MOVE:{move_type}" # Tuân thủ giao thức của Người 2
-            try:
-                self.socket.sendall(protocol_msg.encode('utf-8'))
-                print(f">>> Đã gửi: {protocol_msg}")
-            except:
-                print("Lỗi gửi tin nhắn.")
+        self.is_connected = True
+        print(">>> Đã kết nối WebSocket!")
+        return True
 
     def close(self):
-        """Ngắt kết nối"""
-        if self.socket:
-            self.socket.sendall("QUIT".encode('utf-8'))
-            self.socket.close()
+        """Ngắt kết nối."""
+        if self.ws_app and self.is_connected:
+            try:
+                self.ws_app.send(json.dumps({"type": "quit"}))
+            except Exception:
+                pass
+            self.ws_app.close()
         self.is_connected = False
 
-# --- PHẦN CODE TEST (Chạy thử không cần giao diện) ---
-# Người 3 có thể chạy file này độc lập để test với Server của Người 1, 2
-if __name__ == "__main__":
-    
-    # Hàm giả lập UI để test
-    def test_ui_callback(msg):
-        print(f"==> UI NHẬN ĐƯỢC: {msg}")
-        if "RESULT" in msg:
-            print("!!! KẾT QUẢ ĐÃ VỀ !!!")
+    # ------------------------------------------------------------------ #
+    # WebSocket callbacks
+    # ------------------------------------------------------------------ #
+    def _on_open(self, ws):
+        self.connected_event.set()
 
-    # Tạo client
-    client = GameClient(host='127.0.0.1', port=1234, on_message_received=test_ui_callback)
-    
+    def _on_close(self, ws, close_status_code, close_msg):
+        self.is_connected = False
+        print(f"[WS] Đóng kết nối: {close_status_code} {close_msg}")
+
+    def _on_error(self, ws, error):
+        print(f"[WS] Lỗi: {error}")
+
+    def _on_message(self, ws, message: str):
+        """Nhận message từ server, parse JSON và đẩy cho UI callback."""
+        try:
+            data = json.loads(message)
+        except Exception:
+            print(f"[WS] Không parse được message: {message}")
+            return
+
+        if self.on_message_received:
+            self.on_message_received(data)
+
+    # ------------------------------------------------------------------ #
+    # API gửi lệnh
+    # ------------------------------------------------------------------ #
+    def send_move(self, move_type: str):
+        """Gửi nước đi (ROCK/PAPER/SCISSORS)."""
+        if not self.is_connected or not self.ws_app:
+            print("Chưa kết nối server.")
+            return
+        try:
+            payload = {"type": "move", "value": move_type}
+            self.ws_app.send(json.dumps(payload))
+            print(f">>> Đã gửi: {payload}")
+        except Exception as exc:
+            print(f"Lỗi gửi tin: {exc}")
+
+
+# --- PHẦN CODE TEST (CLI) ---
+if __name__ == "__main__":
+    def test_ui_callback(msg):
+        print(f"==> UI nhận: {msg}")
+
+    client = GameClient(host="127.0.0.1", port=8765, on_message_received=test_ui_callback)
+
     if client.connect_to_server():
         while True:
-            # Nhập lệnh từ bàn phím để test gửi đi
-            cmd = input("Nhập r (Rock), p (Paper), s (Scissors) hoặc q (Quit): ")
-            if cmd == 'r':
-                client.send_move('ROCK')
-            elif cmd == 'p':
-                client.send_move('PAPER')
-            elif cmd == 's':
-                client.send_move('SCISSORS')
-            elif cmd == 'q':
+            cmd = input("Nhập r (Rock), p (Paper), s (Scissors) hoặc q (Quit): ").strip().lower()
+            if cmd == "r":
+                client.send_move("ROCK")
+            elif cmd == "p":
+                client.send_move("PAPER")
+            elif cmd == "s":
+                client.send_move("SCISSORS")
+            elif cmd == "q":
                 client.close()
                 break
