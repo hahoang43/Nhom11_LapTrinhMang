@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oẳn Tù Tì Online ✨</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+    
+    :root {
+      /* Tông màu pastel tươi sáng */
+      --pastel-pink: #FFB6D9;
+      --pastel-blue: #B6E5FF;
+      --pastel-yellow: #FFF4B6;
+      --pastel-green: #B6FFD9;
+      --pastel-purple: #E5B6FF;
+      --pastel-orange: #FFD9B6;
+      
+      --bg-gradient-1: #FFE5F0;
+      --bg-gradient-2: #E5F0FF;
+      --bg-gradient-3: #FFF0E5;
+      
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --card-shadow: rgba(255, 182, 217, 0.3);
+      
+      --text-dark: #4A4A4A;
+      --text-light: #7A7A7A;
+      
+      --btn-primary: linear-gradient(135deg, #FFB6D9 0%, #FF8CC8 100%);
+      --btn-danger: linear-gradient(135deg, #FFB6B6 0%, #FF8C8C 100%);
+      --btn-success: linear-gradient(135deg, #B6FFD9 0%, #8CFFC8 100%);
+      
+      --rock-gradient: linear-gradient(135deg, #FFD9B6 0%, #FFC8A3 100%);
+      --paper-gradient: linear-gradient(135deg, #B6E5FF 0%, #8CD4FF 100%);
+      --scissors-gradient: linear-gradient(135deg, #E5B6FF 0%, #D48CFF 100%);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, var(--bg-gradient-1) 0%, var(--bg-gradient-2) 50%, var(--bg-gradient-3) 100%);
+      background-attachment: fixed;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+    
+    /* Floating decorations */
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: float 20s infinite ease-in-out;
+      z-index: 0;
+    }
+    
+    body::before {
+      width: 300px;
+      height: 300px;
+      background: var(--pastel-pink);
+      top: 10%;
+      left: 10%;
+      animation-delay: 0s;
+    }
+    
+    body::after {
+      width: 200px;
+      height: 200px;
+      background: var(--pastel-blue);
+      bottom: 10%;
+      right: 10%;
+      animation-delay: 10s;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      33% { transform: translate(30px, -30px) rotate(120deg); }
+      66% { transform: translate(-20px, 20px) rotate(240deg); }
+    }
+    
+    .card {
+      width: 100%;
+      max-width: 500px;
+      background: var(--card-bg);
+      border-radius: 30px;
+      padding: 40px 30px;
+      box-shadow: 0 20px 60px var(--card-shadow),
+                  0 0 0 1px rgba(255, 255, 255, 0.5);
+      position: relative;
+      z-index: 1;
+      backdrop-filter: blur(10px);
+      animation: slideIn 0.6s ease-out;
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .logo-container {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .logo-img {
+      max-width: 200px;
+      width: 100%;
+      height: auto;
+      margin: 0 auto 20px;
+      display: block;
+      filter: drop-shadow(0 10px 20px rgba(255, 182, 217, 0.4));
+      animation: bounce 2s infinite ease-in-out;
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #FF8CC8 0%, #8CD4FF 50%, #D48CFF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    
+    .subtitle {
+      text-align: center;
+      color: var(--text-light);
+      font-size: 14px;
+      margin-bottom: 30px;
+      font-weight: 300;
+    }
+    
+    .row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    input {
+      flex: 1;
+      min-width: 200px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 2px solid var(--pastel-pink);
+      border-radius: 15px;
+      padding: 12px 18px;
+      font-size: 14px;
+      color: var(--text-dark);
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.3s ease;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #FF8CC8;
+      box-shadow: 0 0 0 3px rgba(255, 140, 200, 0.2);
+      background: white;
+    }
+    
+    button {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      border: none;
+      border-radius: 15px;
+      padding: 12px 24px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 14px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    button::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+    
+    button:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    .primary {
+      background: var(--btn-primary);
+      color: white;
+    }
+    
+    .danger {
+      background: var(--btn-danger);
+      color: white;
+    }
+    
+    .btn-move {
+      flex: 1;
+      min-width: 120px;
+      padding: 20px 15px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-dark);
+      border: 3px solid transparent;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .btn-move[data-move="ROCK"] {
+      background: var(--rock-gradient);
+      border-color: var(--pastel-orange);
+    }
+    
+    .btn-move[data-move="PAPER"] {
+      background: var(--paper-gradient);
+      border-color: var(--pastel-blue);
+    }
+    
+    .btn-move[data-move="SCISSORS"] {
+      background: var(--scissors-gradient);
+      border-color: var(--pastel-purple);
+    }
+    
+    .btn-move:not(.disabled):hover {
+      transform: translateY(-5px) scale(1.05);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    }
+    
+    .btn-move:not(.disabled):active {
+      animation: pulse 0.3s ease;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(0.95); }
+      100% { transform: scale(1); }
+    }
+    
+    .btn-move.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      filter: grayscale(0.5);
+    }
+    
+    .btn-move.disabled:hover {
+      transform: none;
+    }
+    
+    .primary.disabled,
+    .danger.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    
+    .status {
+      margin: 25px 0;
+      padding: 18px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(255, 182, 217, 0.2) 0%, rgba(182, 229, 255, 0.2) 100%);
+      border: 2px solid rgba(255, 182, 217, 0.3);
+      min-height: 60px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+    
+    .status:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 15px rgba(255, 182, 217, 0.2);
+    }
+    
+    .status .label {
+      font-weight: 600;
+      color: var(--text-dark);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    
+    .status .value {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-dark);
+      transition: color 0.3s ease;
+    }
+    
+    .log {
+      margin-top: 20px;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 20px;
+      padding: 15px;
+      border: 2px solid rgba(255, 182, 217, 0.2);
+      height: 150px;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    
+    .log::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .log::-webkit-scrollbar-track {
+      background: rgba(255, 182, 217, 0.1);
+      border-radius: 10px;
+    }
+    
+    .log::-webkit-scrollbar-thumb {
+      background: var(--pastel-pink);
+      border-radius: 10px;
+    }
+    
+    .log p {
+      margin: 6px 0;
+      color: var(--text-light);
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    .log strong {
+      color: var(--text-dark);
+      font-weight: 600;
+    }
+    
+    /* Sparkle animation */
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+      50% { opacity: 1; transform: scale(1) rotate(180deg); }
+    }
+    
+    .sparkle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: white;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: sparkle 1s ease-out forwards;
+    }
+    
+    /* Responsive */
+    @media (max-width: 600px) {
+      .card {
+        padding: 30px 20px;
+      }
+      
+      h1 {
+        font-size: 24px;
+      }
+      
+      .btn-move {
+        min-width: 100px;
+        padding: 15px 10px;
+        font-size: 16px;
+      }
+      
+      .row {
+        flex-direction: column;
+      }
+      
+      input {
+        min-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo-container">
+      <img src="logo.png" alt="Oẳn Tù Tì Logo" class="logo-img" id="logo-img" onerror="this.style.display='none'">
+      <h1>Oẳn Tù Tì Online</h1>
+      <p class="subtitle">Chơi Búa – Bao – Kéo qua WebSocket ✨</p>
+    </div>
+
+    <div class="row">
+      <input id="ws-url" type="text" value="ws://localhost:8765" placeholder="ws://localhost:8765" />
+      <button id="btn-connect" class="primary">Kết nối</button>
+      <button id="btn-disconnect" class="danger disabled">Ngắt</button>
+    </div>
+
+    <div class="status">
+      <div class="label">Trạng thái:</div>
+      <div class="value" id="status-text">Chưa kết nối.</div>
+    </div>
+
+    <div class="row">
+      <button class="btn-move disabled" data-move="ROCK">✊ BÚA</button>
+      <button class="btn-move disabled" data-move="PAPER">✋ BAO</button>
+      <button class="btn-move disabled" data-move="SCISSORS">✌ KÉO</button>
+    </div>
+
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    const statusText = document.getElementById("status-text");
+    const logBox = document.getElementById("log");
+    const btnConnect = document.getElementById("btn-connect");
+    const btnDisconnect = document.getElementById("btn-disconnect");
+    const btnMoves = Array.from(document.querySelectorAll(".btn-move"));
+    const urlInput = document.getElementById("ws-url");
+
+    let ws = null;
+    let connected = false;
+
+    function createSparkle(x, y) {
+      const sparkle = document.createElement('div');
+      sparkle.className = 'sparkle';
+      sparkle.style.left = x + 'px';
+      sparkle.style.top = y + 'px';
+      document.body.appendChild(sparkle);
+      setTimeout(() => sparkle.remove(), 1000);
+    }
+
+    function setStatus(text, color = "#4A4A4A") {
+      statusText.textContent = text;
+      statusText.style.color = color;
+    }
+
+    function log(text) {
+      const p = document.createElement("p");
+      p.innerHTML = text;
+      logBox.appendChild(p);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function toggleButtons(enabled) {
+      btnMoves.forEach((b) => {
+        if (enabled) {
+          b.classList.remove("disabled");
+        } else {
+          b.classList.add("disabled");
+        }
+      });
+    }
+
+    function toggleConnectButtons(isConnected) {
+      if (isConnected) {
+        btnConnect.classList.add("disabled");
+        btnDisconnect.classList.remove("disabled");
+      } else {
+        btnConnect.classList.remove("disabled");
+        btnDisconnect.classList.add("disabled");
+      }
+    }
+
+    function handleMessage(evt) {
+      console.log("[CLIENT] Nhận được message:", evt.data);
+      let data;
+      try { 
+        data = JSON.parse(evt.data);
+        console.log("[CLIENT] Parsed data:", data);
+      } catch (e) { 
+        console.error("[CLIENT] Lỗi parse JSON:", e);
+        return; 
+      }
+
+      const type = data.type;
+      console.log("[CLIENT] Message type:", type);
+      
+      if (type === "system" || type === "start") {
+        const color = type === "start" ? "#22C55E" : "#3B82F6";
+        setStatus(data.message || "Thông báo", color);
+        log(`<strong>Server:</strong> ${data.message}`);
+        if (type === "start") {
+          toggleButtons(true);
+          // Sparkle effect
+          for (let i = 0; i < 10; i++) {
+            setTimeout(() => {
+              createSparkle(
+                Math.random() * window.innerWidth,
+                Math.random() * window.innerHeight
+              );
+            }, i * 100);
+          }
+        }
+      } else if (type === "wait") {
+        setStatus(data.message || "Đang đợi đối thủ...", "#F59E0B");
+        toggleButtons(false);
+      } else if (type === "opponent_moved") {
+        setStatus(data.message || "Đối thủ đã chọn, đến lượt bạn!", "#EF4444");
+        toggleButtons(true);
+      } else if (type === "result") {
+        const outcome = data.outcome;
+        let color = "#6B7280";
+        let emoji = "⚖️";
+        if (outcome === "WIN") {
+          color = "#22C55E";
+          emoji = "🎉";
+        } else if (outcome === "LOSE") {
+          color = "#EF4444";
+          emoji = "😢";
+        } else {
+          emoji = "🤝";
+        }
+        setStatus(`${emoji} Kết quả: ${outcome} | Bạn: ${data.your_move} - Đối thủ: ${data.opponent_move}`, color);
+        toggleButtons(true);
+        log(`<strong>Kết quả:</strong> ${emoji} ${outcome} (Bạn: ${data.your_move}, Đối thủ: ${data.opponent_move})`);
+        
+        // Celebration effect for win
+        if (outcome === "WIN") {
+          for (let i = 0; i < 20; i++) {
+            setTimeout(() => {
+              createSparkle(
+                Math.random() * window.innerWidth,
+                Math.random() * window.innerHeight
+              );
+            }, i * 50);
+          }
+        }
+      } else if (type === "opponent_left") {
+        setStatus(data.message || "Đối thủ đã thoát.", "#F59E0B");
+        toggleButtons(false);
+        log(`<strong>Server:</strong> ${data.message || "Đối thủ đã thoát."}`);
+      }
+    }
+
+    function connect() {
+      if (connected) return;
+      const url = urlInput.value.trim();
+      if (!url) return;
+
+      ws = new WebSocket(url);
+      ws.onopen = () => {
+        console.log("[CLIENT] WebSocket đã mở kết nối");
+        connected = true;
+        setStatus("Đã kết nối, đang ghép cặp...", "#22C55E");
+        toggleConnectButtons(true);
+        log("<strong>Client:</strong> Đã kết nối.");
+      };
+      ws.onmessage = handleMessage;
+      ws.onerror = (e) => {
+        console.error("[CLIENT] WebSocket error:", e);
+        setStatus("Lỗi kết nối. Kiểm tra server.", "#EF4444");
+        log("<strong>Lỗi:</strong> Không thể kết nối.");
+      };
+      ws.onclose = (e) => {
+        console.log("[CLIENT] WebSocket đóng kết nối. Code:", e.code, "Reason:", e.reason);
+        connected = false;
+        setStatus("Đã ngắt kết nối.", "#EF4444");
+        toggleButtons(false);
+        toggleConnectButtons(false);
+        log("<strong>Client:</strong> Đóng kết nối.");
+      };
+    }
+
+    function disconnect() {
+      if (ws) {
+        ws.close();
+      }
+    }
+
+    btnConnect.addEventListener("click", (e) => {
+      if (!btnConnect.classList.contains("disabled")) {
+        createSparkle(e.clientX, e.clientY);
+        connect();
+      }
+    });
+    
+    btnDisconnect.addEventListener("click", (e) => {
+      if (!btnDisconnect.classList.contains("disabled")) {
+        disconnect();
+      }
+    });
+    
+    btnMoves.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        if (!connected || btn.classList.contains("disabled")) return;
+        const move = btn.dataset.move;
+        ws?.send(JSON.stringify({ type: "move", value: move }));
+        setStatus(`Bạn chọn ${move}. Đang đợi kết quả...`, "#6B7280");
+        toggleButtons(false);
+        log(`<strong>Bạn:</strong> ${move}`);
+        
+        // Sparkle on click
+        createSparkle(e.clientX, e.clientY);
+      });
+    });
+
+    // Cho phép Enter để kết nối
+    urlInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") connect();
+    });
+    
+    // Try to load logo from different possible locations
+    const logoImg = document.getElementById('logo-img');
+    const logoPaths = ['logo.png', '../logo.png', './logo.png', 'web/logo.png'];
+    let logoIndex = 0;
+    
+    logoImg.onerror = function() {
+      if (logoIndex < logoPaths.length - 1) {
+        logoIndex++;
+        this.src = logoPaths[logoIndex];
+      } else {
+        this.style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>
