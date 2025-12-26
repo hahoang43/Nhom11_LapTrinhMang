@@ -66,6 +66,13 @@ class RockPaperScissorsUI:
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
+        # Bản đồ tên nước đi sang tiếng Việt
+        self._move_vn = {
+            "ROCK": "BÚA",
+            "PAPER": "BAO",
+            "SCISSORS": "KÉO",
+        }
+
     def connect_server(self):
         """Gọi hàm kết nối của client WebSocket."""
         if self.client.connect_to_server():
@@ -84,7 +91,8 @@ class RockPaperScissorsUI:
     def send_choice(self, move: str):
         """Gửi nước đi và khóa nút để tránh spam."""
         self.client.send_move(move)
-        self.lbl_status.config(text=f"Bạn đã chọn {move}. Đang đợi kết quả...", fg="black")
+        mv = self._move_vn.get(move, move)
+        self.lbl_status.config(text=f"Bạn đã chọn {mv}. Đang đợi kết quả...", fg="black")
         self.toggle_buttons(False)
 
     def handle_server_message(self, msg):
@@ -122,11 +130,13 @@ class RockPaperScissorsUI:
                 display_text = "⚖️ HÒA!"
                 color = "gray"
 
+            # Hiển thị tên nước đi bằng tiếng Việt nếu server có gửi trường VN
+            your = msg.get('your_move_vn') or self._move_vn.get(msg.get('your_move'), msg.get('your_move'))
+            opp = msg.get('opponent_move_vn') or self._move_vn.get(msg.get('opponent_move'), msg.get('opponent_move'))
+            # Nếu server gửi nhãn kết quả tiếng Việt, ưu tiên dùng nó
+            outcome_label = msg.get('outcome_vn') or ("BẠN ĐÃ THẮNG!" if outcome == "WIN" else "BẠN ĐÃ THUA!" if outcome == "LOSE" else "HÒA!")
             self.lbl_status.config(text=display_text, fg=color)
-            messagebox.showinfo(
-                "Kết quả",
-                f"{display_text}\nBạn: {msg.get('your_move')}, Đối thủ: {msg.get('opponent_move')}",
-            )
+            messagebox.showinfo("Kết quả", f"{display_text}\nBạn: {your}, Đối thủ: {opp}")
             self.toggle_buttons(True)
 
         elif msg_type == "opponent_left":

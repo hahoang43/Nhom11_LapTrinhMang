@@ -532,21 +532,25 @@
         setStatus(data.message || "Đối thủ đã chọn, đến lượt bạn!", "#EF4444");
         toggleButtons(true);
       } else if (type === "result") {
-        const outcome = data.outcome;
-        let color = "#6B7280";
-        let emoji = "⚖️";
-        if (outcome === "WIN") {
-          color = "#22C55E";
-          emoji = "🎉";
-        } else if (outcome === "LOSE") {
-          color = "#EF4444";
-          emoji = "😢";
-        } else {
-          emoji = "🤝";
-        }
-        setStatus(`${emoji} Kết quả: ${outcome} | Bạn: ${data.your_move} - Đối thủ: ${data.opponent_move}`, color);
-        toggleButtons(true);
-        log(`<strong>Kết quả:</strong> ${emoji} ${outcome} (Bạn: ${data.your_move}, Đối thủ: ${data.opponent_move})`);
+          const outcome = data.outcome;
+          // Prefer Vietnamese labels if server provided them
+          const outcomeLabel = data.outcome_vn || outcome;
+          const yourLabel = data.your_move_vn || data.your_move;
+          const oppLabel = data.opponent_move_vn || data.opponent_move;
+          let color = "#6B7280";
+          let emoji = "⚖️";
+          if (outcome === "WIN") {
+            color = "#22C55E";
+            emoji = "🎉";
+          } else if (outcome === "LOSE") {
+            color = "#EF4444";
+            emoji = "😢";
+          } else {
+            emoji = "🤝";
+          }
+          setStatus(`${emoji} Kết quả: ${outcomeLabel} | Bạn: ${yourLabel} - Đối thủ: ${oppLabel}`, color);
+          toggleButtons(true);
+          log(`<strong>Kết quả:</strong> ${emoji} ${outcomeLabel} (Bạn: ${yourLabel}, Đối thủ: ${oppLabel})`);
         
         // Celebration effect for win
         if (outcome === "WIN") {

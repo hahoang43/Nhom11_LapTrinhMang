@@ -1,3 +1,4 @@
+import os
 import json
 import threading
 from typing import Callable, Optional
@@ -11,9 +12,10 @@ class GameClient:
     Giao diện (Tkinter hoặc web) có thể truyền callback để nhận dữ liệu.
     """
 
-    def __init__(self, host: str = "127.0.0.1", port: int = 8765, on_message_received: Optional[Callable] = None):
-        self.host = host
-        self.port = port
+    def __init__(self, host: str | None = None, port: int | None = None, on_message_received: Optional[Callable] = None):
+        # Nếu không truyền host/port, đọc từ biến môi trường HOST/PORT
+        self.host = host or os.getenv('HOST', '127.0.0.1')
+        self.port = int(port or os.getenv('PORT', '8765'))
         self.ws_app: Optional[websocket.WebSocketApp] = None
         self.listen_thread: Optional[threading.Thread] = None
         self.is_connected = False
@@ -104,11 +106,13 @@ if __name__ == "__main__":
     def test_ui_callback(msg):
         print(f"==> UI nhận: {msg}")
 
-    client = GameClient(host="127.0.0.1", port=8765, on_message_received=test_ui_callback)
+    # Tạo client; có thể đặt biến môi trường HOST/PORT trước khi chạy.
+    # Ví dụ PowerShell: $env:HOST='127.0.0.1'; $env:PORT='8765'; python client.py
+    client = GameClient(on_message_received=test_ui_callback)
 
     if client.connect_to_server():
         while True:
-            cmd = input("Nhập r (Rock), p (Paper), s (Scissors) hoặc q (Quit): ").strip().lower()
+            cmd = input("Nhập r (Búa), p (Bao), s (Kéo) hoặc q (Thoát): ").strip().lower()
             if cmd == "r":
                 client.send_move("ROCK")
             elif cmd == "p":

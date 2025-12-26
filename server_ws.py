@@ -74,6 +74,10 @@ async def evaluate_game(player: Player):
             "outcome": result_p1,
             "your_move": p1.move,
             "opponent_move": p2.move,
+            # Trường tiếng Việt để client hiển thị trực tiếp nếu hỗ trợ
+            "outcome_vn": ("THẮNG" if result_p1 == "WIN" else "THUA" if result_p1 == "LOSE" else "HÒA"),
+            "your_move_vn": ("BÚA" if p1.move == "ROCK" else "BAO" if p1.move == "PAPER" else "KÉO"),
+            "opponent_move_vn": ("BÚA" if p2.move == "ROCK" else "BAO" if p2.move == "PAPER" else "KÉO"),
         }
     )
     await p2.send(
@@ -82,6 +86,10 @@ async def evaluate_game(player: Player):
             "outcome": result_p2,
             "your_move": p2.move,
             "opponent_move": p1.move,
+            # Trường tiếng Việt để client hiển thị trực tiếp nếu hỗ trợ
+            "outcome_vn": ("THẮNG" if result_p2 == "WIN" else "THUA" if result_p2 == "LOSE" else "HÒA"),
+            "your_move_vn": ("BÚA" if p2.move == "ROCK" else "BAO" if p2.move == "PAPER" else "KÉO"),
+            "opponent_move_vn": ("BÚA" if p1.move == "ROCK" else "BAO" if p1.move == "PAPER" else "KÉO"),
         }
     )
 

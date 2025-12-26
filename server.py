@@ -1,11 +1,24 @@
+import os
 import socket
 import threading
 import queue
 
 # --- Cấu hình Server ---
-HOST = '0.0.0.0'
-PORT = 1234
+# Cho phép thay đổi HOST/PORT qua biến môi trường để dễ test/triển khai
+# Ví dụ: trong PowerShell: $env:PORT = '2345'; python server.py
+HOST = os.getenv('HOST', '0.0.0.0')
+PORT = int(os.getenv('PORT', '1234'))
 waiting_queue = queue.Queue()
+
+
+# Helper: mapping sang tiếng Việt (dùng khi gửi thông báo)
+def move_to_vn(move: str) -> str:
+    return "BÚA" if move == 'ROCK' else "BAO" if move == 'PAPER' else "KÉO"
+
+
+def outcome_to_vn(outcome: str) -> str:
+    return "THẮNG" if outcome == 'WIN' else "THUA" if outcome == 'LOSE' else "HÒA"
+# waiting_queue defined above
 
 class Player:
     def __init__(self, conn, addr):
@@ -56,9 +69,14 @@ def evaluate_game(player):
     else:
         result_p2 = 'DRAW'
 
-    # Gửi kết quả về cho cả 2
-    p1.send_msg(f"RESULT:{result_p1}")  # Ví dụ: RESULT:WIN
-    p2.send_msg(f"RESULT:{result_p2}")  # Ví dụ: RESULT:LOSE
+    # Gửi kết quả về cho cả 2 (gồm mã cũ + nhãn tiếng Việt và tên nước đi VN)
+    p1_vn_out = outcome_to_vn(result_p1)
+    p2_vn_out = outcome_to_vn(result_p2)
+    p1_move_vn = move_to_vn(p1.move)
+    p2_move_vn = move_to_vn(p2.move)
+
+    p1.send_msg(f"RESULT:{result_p1}|VN:{p1_vn_out}|YOU:{p1.move}|YOU_VN:{p1_move_vn}|OPP:{p2.move}|OPP_VN:{p2_move_vn}")
+    p2.send_msg(f"RESULT:{result_p2}|VN:{p2_vn_out}|YOU:{p2.move}|YOU_VN:{p2_move_vn}|OPP:{p1.move}|OPP_VN:{p1_move_vn}")
 
     # Reset nước đi để chuẩn bị ván mới
     p1.reset_move()
@@ -83,27 +101,27 @@ def handle_client(player):
 
             # --- LOGIC XỬ LÝ TIN NHẮN (PROTOCOL) ---
             
-            # 1. Nếu client gửi nước đi (Ví dụ: MOVE:ROCK)
-            if msg.startswith("MOVE:"):
-                # Cắt chuỗi để lấy nước đi (ROCK, PAPER, hoặc SCISSORS)
-                move = msg.split(":")[1] 
-                
-                # Kiểm tra xem có đối thủ chưa
-                if player.opponent is None:
-                    player.send_msg("SYSTEM:Chưa có đối thủ, không thể ra đòn.")
-                    continue
+                    # 1. Nếu client gửi nước đi (Ví dụ: MOVE:ROCK)
+                    if msg.startswith("MOVE:"):
+                        # Cắt chuỗi để lấy nước đi (ROCK, PAPER, hoặc SCISSORS)
+                        move = msg.split(":")[1]
 
-                player.move = move
-                print(f"[{addr}] Đã chọn: {move}")
+                        # Kiểm tra xem có đối thủ chưa
+                        if player.opponent is None:
+                            player.send_msg("SYSTEM:Chưa có đối thủ, không thể ra đòn.|VN:Chưa có đối thủ, vui lòng đợi.")
+                            continue
 
-                # Kiểm tra xem đối thủ đã đi chưa
-                if player.opponent.move is None:
-                    # Đối thủ chưa đi -> Bảo người này đợi
-                    player.send_msg("WAIT") 
-                    player.opponent.send_msg("SYSTEM:Đối thủ đã ra đòn, đến lượt bạn!")
-                else:
-                    # Đối thủ đã đi rồi -> Tính thắng thua ngay lập tức
-                    evaluate_game(player)
+                        player.move = move
+                        print(f"[{addr}] Đã chọn: {move}")
+
+                        # Kiểm tra xem đối thủ đã đi chưa
+                        if player.opponent.move is None:
+                            # Đối thủ chưa đi -> Bảo người này đợi (gửi cả nhãn VN)
+                            player.send_msg(f"WAIT|VN:Đang chờ đối thủ chọn.")
+                            player.opponent.send_msg("SYSTEM:Đối thủ đã ra đòn, đến lượt bạn!|VN:Đối thủ đã chọn, đến lượt bạn!")
+                        else:
+                            # Đối thủ đã đi rồi -> Tính thắng thua ngay lập tức
+                            evaluate_game(player)
 
             # 2. Xử lý thoát game
             elif msg == "QUIT":
@@ -114,7 +132,8 @@ def handle_client(player):
     finally:
         # Xử lý khi ngắt kết nối
         if player.opponent:
-            player.opponent.send_msg("OPPONENT_LEFT") # Báo cho đối thủ biết
+            # Gửi cả mã và nhãn VN cho client TCP
+            player.opponent.send_msg("OPPONENT_LEFT|VN:Đối thủ đã rời trận.") # Báo cho đối thủ biết
             player.opponent.opponent = None # Hủy ghép cặp
         conn.close()
         print(f"[DISCONNECT] {addr} disconnected.")
@@ -123,15 +142,17 @@ def match_making(new_player):
     # (Giữ nguyên logic của Người 1)
     if waiting_queue.empty():
         waiting_queue.put(new_player)
-        new_player.send_msg("SYSTEM:Đang tìm đối thủ...")
+        new_player.send_msg("SYSTEM:Đang tìm đối thủ...|VN:Đang tìm đối thủ...")
         threading.Thread(target=handle_client, args=(new_player,)).start()
     else:
         opponent = waiting_queue.get()
         new_player.opponent = opponent
         opponent.opponent = new_player
         
-        new_player.send_msg("SYSTEM:Game Start! Hãy chọn MOVE:ROCK, MOVE:PAPER, hoặc MOVE:SCISSORS")
-        opponent.send_msg("SYSTEM:Game Start! Hãy chọn MOVE:ROCK, MOVE:PAPER, hoặc MOVE:SCISSORS")
+        # Gửi thông báo bắt đầu (giữ mã hướng dẫn nhưng bổ sung nhãn VN)
+        start_msg = "SYSTEM:Game Start! Hãy chọn MOVE:ROCK, MOVE:PAPER, hoặc MOVE:SCISSORS|VN:Đã tìm thấy đối thủ! Hãy chọn BÚA/BAO/KÉO"
+        new_player.send_msg(start_msg)
+        opponent.send_msg(start_msg)
         
         threading.Thread(target=handle_client, args=(new_player,)).start()
 
