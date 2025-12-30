@@ -1,15 +1,26 @@
 import asyncio
 import json
-from typing import Optional
+import logging
+from typing import Optional, List, Dict, Tuple
 
 import websockets
+
+# Thiết lập logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
 
 # Cấu hình WebSocket
 HOST = "0.0.0.0"
 PORT = 8765
 
-# Hàng đợi người chơi đang đợi ghép
-waiting_players = []
+# Các hằng số cho nước đi và bản dịch
+VALID_MOVES: Tuple[str, ...] = ("ROCK", "PAPER", "SCISSORS")
+MOVE_VN: Dict[str, str] = {"ROCK": "BÚA", "PAPER": "BAO", "SCISSORS": "KÉO"}
+OUTCOME_VN: Dict[str, str] = {"WIN": "THẮNG", "LOSE": "THUA", "DRAW": "HÒA"}
+
+# Hàng đợi người chơi đang đợi ghép (được bảo vệ bởi lock để tránh race condition)
+waiting_players: List["Player"] = []
+waiting_lock = asyncio.Lock()
 
 
 def is_ws_closed(ws) -> bool:
@@ -25,19 +36,17 @@ class Player:
         self.opponent: Optional["Player"] = None
         self.move: Optional[str] = None
 
-    async def send(self, data: dict):
+    async def send(self, data: dict) -> bool:
         try:
             if is_ws_closed(self.ws):
-                print(f"[WARNING] WebSocket đã đóng cho {getattr(self.ws, 'remote_address', '?')}, không thể gửi: {data}")
+                logger.warning("WebSocket closed for %s, cannot send: %s", getattr(self.ws, "remote_address", "?"), data)
                 return False
             message = json.dumps(data)
             await self.ws.send(message)
-            print(f"[SEND] Đã gửi đến {self.ws.remote_address}: {data.get('type', 'unknown')}")
+            logger.info("Sent to %s: %s", getattr(self.ws, "remote_address", "?"), data.get("type", "unknown"))
             return True
-        except Exception as e:
-            print(f"[ERROR] Không thể gửi message đến {self.ws.remote_address}: {e}")
-            import traceback
-            traceback.print_exc()
+        except Exception:
+            logger.exception("Failed to send message to %s", getattr(self.ws, "remote_address", "?"))
             return False
 
     def reset_move(self):
@@ -61,6 +70,12 @@ async def evaluate_game(player: Player):
     p1 = player
     p2 = player.opponent
 
+    if p2 is None or is_ws_closed(p2.ws):
+        logger.info("Opponent disconnected before result for %s", getattr(p1.ws, "remote_address", "?"))
+        await p1.send({"type": "opponent_left", "message": "Đối thủ đã rời trận."})
+        p1.reset_move()
+        return
+
     result_p1 = check_winner(p1.move, p2.move)
     result_p2 = "DRAW"
     if result_p1 == "WIN":
@@ -75,9 +90,9 @@ async def evaluate_game(player: Player):
             "your_move": p1.move,
             "opponent_move": p2.move,
             # Trường tiếng Việt để client hiển thị trực tiếp nếu hỗ trợ
-            "outcome_vn": ("THẮNG" if result_p1 == "WIN" else "THUA" if result_p1 == "LOSE" else "HÒA"),
-            "your_move_vn": ("BÚA" if p1.move == "ROCK" else "BAO" if p1.move == "PAPER" else "KÉO"),
-            "opponent_move_vn": ("BÚA" if p2.move == "ROCK" else "BAO" if p2.move == "PAPER" else "KÉO"),
+            "outcome_vn": OUTCOME_VN.get(result_p1, "HÒA"),
+            "your_move_vn": MOVE_VN.get(p1.move, "?"),
+            "opponent_move_vn": MOVE_VN.get(p2.move, "?"),
         }
     )
     await p2.send(
@@ -87,67 +102,65 @@ async def evaluate_game(player: Player):
             "your_move": p2.move,
             "opponent_move": p1.move,
             # Trường tiếng Việt để client hiển thị trực tiếp nếu hỗ trợ
-            "outcome_vn": ("THẮNG" if result_p2 == "WIN" else "THUA" if result_p2 == "LOSE" else "HÒA"),
-            "your_move_vn": ("BÚA" if p2.move == "ROCK" else "BAO" if p2.move == "PAPER" else "KÉO"),
-            "opponent_move_vn": ("BÚA" if p1.move == "ROCK" else "BAO" if p1.move == "PAPER" else "KÉO"),
+            "outcome_vn": OUTCOME_VN.get(result_p2, "HÒA"),
+            "your_move_vn": MOVE_VN.get(p2.move, "?"),
+            "opponent_move_vn": MOVE_VN.get(p1.move, "?"),
         }
     )
 
     p1.reset_move()
     p2.reset_move()
-    print(f"[GAME END] {p1.ws.remote_address} vs {p2.ws.remote_address} -> P1: {result_p1}")
+    logger.info("[GAME END] %s vs %s -> P1: %s", getattr(p1.ws, "remote_address", "?"), getattr(p2.ws, "remote_address", "?"), result_p1)
 
 
 async def cleanup_waiting():
-    """Loại bỏ player đã đóng kết nối khỏi hàng đợi."""
+    """Loại bỏ player đã đóng kết nối khỏi hàng đợi (thread-safe)."""
     global waiting_players
-    waiting_players = [p for p in waiting_players if not is_ws_closed(p.ws)]
+    async with waiting_lock:
+        waiting_players = [p for p in waiting_players if not is_ws_closed(p.ws)]
+    logger.debug("After cleanup, waiting count=%d", len(waiting_players))
 
 
 async def match_making(new_player: Player):
-    """Ghép cặp người chơi."""
+    """Ghép cặp người chơi (an toàn với nhiều coroutine)."""
     try:
         await cleanup_waiting()
-        print(f"[MATCHMAKING] Số người đang đợi: {len(waiting_players)}")
-        
-        if not waiting_players:
-            waiting_players.append(new_player)
-            print(f"[MATCHMAKING] {new_player.ws.remote_address} được thêm vào hàng đợi. Tổng: {len(waiting_players)}")
-            await new_player.send({"type": "system", "message": "Đang tìm đối thủ..."})
-            print(f"[MATCHMAKING] Đã gửi 'Đang tìm đối thủ' đến {new_player.ws.remote_address}")
-            return
+        logger.info("[MATCHMAKING] Số người đang đợi: %d", len(waiting_players))
 
-        opponent = waiting_players.pop(0)
-        print(f"[MATCHMAKING] Tìm thấy đối thủ: {opponent.ws.remote_address} cho {new_player.ws.remote_address}")
-        
+        async with waiting_lock:
+            if not waiting_players:
+                waiting_players.append(new_player)
+                logger.info("[MATCHMAKING] %s được thêm vào hàng đợi. Tổng: %d", getattr(new_player.ws, "remote_address", "?"), len(waiting_players))
+                await new_player.send({"type": "system", "message": "Đang tìm đối thủ..."})
+                logger.debug("Sent searching message to %s", getattr(new_player.ws, "remote_address", "?"))
+                return
+
+            opponent = waiting_players.pop(0)
+
+        logger.info("[MATCHMAKING] Tìm thấy đối thủ: %s cho %s", getattr(opponent.ws, "remote_address", "?"), getattr(new_player.ws, "remote_address", "?"))
+
         new_player.opponent = opponent
         opponent.opponent = new_player
 
         start_msg = {"type": "start", "message": "Đã tìm thấy đối thủ! Hãy chọn Búa/ Bao/ Kéo."}
-        
-        print(f"[MATCHMAKING] Đang gửi start message đến {new_player.ws.remote_address}...")
+
+        logger.debug("[MATCHMAKING] Sending start to %s and %s", getattr(new_player.ws, "remote_address", "?"), getattr(opponent.ws, "remote_address", "?"))
         await new_player.send(start_msg)
-        print(f"[MATCHMAKING] Đã gửi start message đến {new_player.ws.remote_address}")
-        
-        print(f"[MATCHMAKING] Đang gửi start message đến {opponent.ws.remote_address}...")
         await opponent.send(start_msg)
-        print(f"[MATCHMAKING] Đã gửi start message đến {opponent.ws.remote_address}")
-        
-        print(f"[MATCHMAKING] ✓ Đã ghép cặp thành công: {new_player.ws.remote_address} vs {opponent.ws.remote_address}")
-    except Exception as e:
-        print(f"[ERROR] Lỗi trong match_making: {e}")
-        import traceback
-        traceback.print_exc()
+
+        logger.info("[MATCHMAKING] ✓ Đã ghép cặp thành công: %s vs %s", getattr(new_player.ws, "remote_address", "?"), getattr(opponent.ws, "remote_address", "?"))
+    except Exception:
+        logger.exception("Lỗi trong match_making")
 
 
 async def handle_move(player: Player, move: str):
     """Xử lý nước đi từ một người chơi."""
-    if player.opponent is None:
+    if player.opponent is None or is_ws_closed(player.opponent.ws):
         await player.send({"type": "system", "message": "Chưa có đối thủ, vui lòng đợi ghép cặp."})
         return
 
     player.move = move
-    print(f"[{player.ws.remote_address}] Đã chọn: {move}")
+    logger.info("[%s] Chosen: %s", getattr(player.ws, "remote_address", "?"), move)
 
     if player.opponent.move is None:
         # Đối thủ chưa đánh
@@ -164,72 +177,65 @@ async def handle_disconnect(player: Player):
         await cleanup_waiting()
         # Loại bỏ player khỏi hàng đợi nếu có
         global waiting_players
-        waiting_players = [p for p in waiting_players if p != player]
-        
+        async with waiting_lock:
+            waiting_players = [p for p in waiting_players if p != player]
+
         if player.opponent:
             opponent = player.opponent
             player.opponent = None
             opponent.opponent = None
             opponent.reset_move()
-            if not opponent.ws.closed:
+            if not is_ws_closed(opponent.ws):
                 await opponent.send({"type": "opponent_left", "message": "Đối thủ đã rời trận."})
-    except Exception as e:
-        print(f"[ERROR] Lỗi trong handle_disconnect: {e}")
-        import traceback
-        traceback.print_exc()
+    except Exception:
+        logger.exception("Lỗi trong handle_disconnect")
 
 
 async def handler(websocket: websockets.WebSocketServerProtocol):
     player = Player(websocket)
-    print(f"[CONNECT] {websocket.remote_address} đã kết nối.")
-    
+    logger.info("[CONNECT] %s connected.", getattr(websocket, "remote_address", "?"))
+
     try:
         await match_making(player)
-    except Exception as e:
-        print(f"[ERROR] Lỗi khi match_making cho {websocket.remote_address}: {e}")
-        import traceback
-        traceback.print_exc()
+    except Exception:
+        logger.exception("Lỗi khi match_making cho %s", getattr(websocket, "remote_address", "?"))
         return
 
     try:
         async for raw_msg in websocket:
             try:
                 data = json.loads(raw_msg)
-            except Exception as e:
-                print(f"[ERROR] Lỗi parse JSON từ {websocket.remote_address}: {e}")
+            except Exception:
+                logger.exception("Lỗi parse JSON từ %s", getattr(websocket, "remote_address", "?"))
                 await player.send({"type": "system", "message": "Định dạng không hợp lệ."})
                 continue
 
             msg_type = data.get("type")
             if msg_type == "move":
                 move_val = data.get("value")
-                if move_val not in ("ROCK", "PAPER", "SCISSORS"):
+                if move_val not in VALID_MOVES:
                     await player.send({"type": "system", "message": "Nước đi không hợp lệ."})
                     continue
                 try:
                     await handle_move(player, move_val)
-                except Exception as e:
-                    print(f"[ERROR] Lỗi khi xử lý move từ {websocket.remote_address}: {e}")
-                    import traceback
-                    traceback.print_exc()
+                except Exception:
+                    logger.exception("Lỗi khi xử lý move từ %s", getattr(websocket, "remote_address", "?"))
             elif msg_type == "quit":
                 break
     except websockets.ConnectionClosed:
-        print(f"[CLOSED] {websocket.remote_address} đóng kết nối.")
-    except Exception as e:
-        print(f"[ERROR] Lỗi trong handler cho {websocket.remote_address}: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.info("[CLOSED] %s connection closed.", getattr(websocket, "remote_address", "?"))
+    except Exception:
+        logger.exception("Lỗi trong handler cho %s", getattr(websocket, "remote_address", "?"))
     finally:
         try:
             await handle_disconnect(player)
-        except Exception as e:
-            print(f"[ERROR] Lỗi khi disconnect {websocket.remote_address}: {e}")
-        print(f"[DISCONNECT] {websocket.remote_address} disconnected.")
+        except Exception:
+            logger.exception("Lỗi khi disconnect %s", getattr(websocket, "remote_address", "?"))
+        logger.info("[DISCONNECT] %s disconnected.", getattr(websocket, "remote_address", "?"))
 
 
 async def main():
-    print(f"[LISTENING] WebSocket server on ws://{HOST}:{PORT}")
+    logger.info("[LISTENING] WebSocket server on ws://%s:%d", HOST, PORT)
     async with websockets.serve(handler, HOST, PORT):
         await asyncio.Future()  # Chạy vô hạn
 
