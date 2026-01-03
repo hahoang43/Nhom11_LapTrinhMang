@@ -1,5 +1,16 @@
 # Hướng Dẫn Chạy Game Oẳn Tù Tì WebSocket
 
+## Ảnh Chụp Sản Phẩm
+
+<div>
+   <img src="Nhom11-RockPaperScissors-Anhchupsanpham/Server.png" alt="Giao diện Server" width="500" />
+   <br><em>Giao diện Server</em>
+   <br><br>
+   <img src="Nhom11-RockPaperScissors-Anhchupsanpham/Client1.png" alt="Giao diện Client 1" width="350" />
+   <img src="Nhom11-RockPaperScissors-Anhchupsanpham/Client2.png" alt="Giao diện Client 2" width="350" />
+   <br><em>Giao diện Client trên hai tab trình duyệt</em>
+</div>
+
 ## Yêu Cầu
 - Python 3.7+
 - Thư viện: `websockets`
@@ -83,21 +94,6 @@ Bạn sẽ thấy:
 - Kiểm tra log trong terminal server
 - Kiểm tra Console trình duyệt (F12 → Console)
 
----
-
-## Cấu Trúc File
-
-```
-Nhom11_LapTrinhMang/
-├── server_ws.py          # Server WebSocket
-├── start_server.bat      # Script chạy server (Windows)
-├── client.py             # Client Python (tùy chọn)
-├── game_ui.py            # Giao diện Tkinter (tùy chọn)
-└── web/
-    └── index.html        # Giao diện web
-```
-
----
 
 ## Lưu Ý
 
